@@ -5,17 +5,12 @@ except:
     from PySide6 import QtWidgets,QtCore,QtGui
 from maya.app.general import mayaMixin
 import re
-import pathlib
 import sys
 import os
-import importlib
 script_path = os.path.join(cmds.workspace(q=True, rootDirectory=True), 'scripts')
 if script_path not in sys.path:
     sys.path.append(script_path)  # スクリプトのパスを追加
-import texture_separator
-importlib.reload(texture_separator)  # スクリプトのリロード
 from texture_separator import namereplace
-
 
 #  エラー用ダイアログ
 class ErrorWindow(mayaMixin.MayaQWidgetBaseMixin,QtWidgets.QWidget):
@@ -187,9 +182,6 @@ class MainWindow(mayaMixin.MayaQWidgetBaseMixin,QtWidgets.QWidget):
     # ファイル選択
     def pushed_button2(self):
         self.relativePath = False
-        basepath = pathlib.Path(cmds.workspace(q=True,rootDirectory=True)+'\\sourceimages\\texture')
-        if basepath.exists()==False:
-            basepath = pathlib.Path(cmds.workspace(q=True,rootDirectory=True)+'\\sourceimages')
         chpath = QtWidgets.QFileDialog.getExistingDirectory()
         if not chpath:
             return()
