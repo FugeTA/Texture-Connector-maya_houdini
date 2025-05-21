@@ -7,7 +7,7 @@ AdobeSubstancePainterで出力したテクスチャをMaya/Houdiniに簡単に�
 ## 要件
 なし
 ## 使い方
-1.Mayaのドキュメントの/scripts内か、ワークスペースの/scriptsにtexture_Connecterファイルとtexture_separatorファイルを移動する。  
+1.Mayaのドキュメントの/scripts内か、プロジェクトフォルダの/scriptsにtexture_Connecterファイルとtexture_separatorファイルを移動する。  
 2.以下のコマンドを実行する。
 ```
 import (python/maya)_texture_Connecter
