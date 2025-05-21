@@ -1,15 +1,15 @@
 import hou
 import pathlib
 from PySide2 import QtWidgets, QtCore
+
+
+
 import re
 import sys
 import os
-import importlib
 script_path = os.path.join(hou.text.expandString("$HIP")+'/scripts')
 if script_path not in sys.path:
     sys.path.append(script_path)  # スクリプトのパスを追加
-import texture_separator
-importlib.reload(texture_separator)  # スクリプトのリロード
 from texture_separator import namereplace
 
 class ErrorWindow(QtWidgets.QWidget):
@@ -308,85 +308,6 @@ def othertex(f,files,input,imgPath):
         input.setInput(36,files,0)
         files.setName('emissive')
 
-# main
-def texCon(folder):
-    fileType = ['BaseColor','Metalness','Roughness','Opacity','Emission','Normal','Height']
-    filename = [getFiles(folder,t) for t in fileType]
-    if not any(filename):
-        ErrorWindow("Texture file not found")
-        return()
-    mat,disp,height,image = makeNodes(filename)
-    fileSetting(filename,image,height,disp)
-    connectNode(filename,mat,image,disp,height)
-
-# getFiles
-def getFiles(folder,texType):
-    #フォルダからファイルを取り出す
-    #選択されたフォルダがあるかどうか
-    path = pathlib.Path(folder)
-    if not path.exists():
-        return(False)
-    # フォルダ内に特定のファイルがあるか
-    for i in path.iterdir():
-        if i.suffix in ["tx","rat"]:
-            continue
-        if texType in str(i) :
-            if re.search(r'_\d+\.',str(i)):
-                i = re.sub(r'_\d+\.',r'_%(UDIM)d.',str(i))
-                return(i)
-            return(i)
-    else:
-        return(False)   
-
-# getNode
-def makeNodes(filename):
-    h = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
-    mat = hou.selectedItems()[0]
-    disp = hou.selectedItems()[0].outputs()[0].input(1)
-    image = hou.node((h.pwd().path())).createNode('hmtlxpbrtextureset','hmtlxpbrtextureset1')
-    height = False
-    if filename[6]:
-        height =  hou.node((h.pwd().path())).createNode('mtlximage','mtlximage1')
-    return(mat,disp,height,image)
-
-# setFilesParm
-def fileSetting(filename,image,height,disp):
-    hParm = ['base_color_file','metalness_file','specular_roughness_file','opacity_file','emission_color_file','bump_normal_file','Height_file']
-    for i,f in enumerate(filename):
-        # heightがあれば
-        if i == 6 and f:
-            height.parm('file').set(str(f))  # heightfile
-            height.parm('signature').set('Float')  # flortType
-            height.parm('filecolorspace').set('Raw')  # colorSpace
-            disp.parm('scale').set(0.5)  # heightScale
-            continue
-        # 基本
-        if f:
-            image.parm(hParm[i]).set(str(f))
-        # normalがあれば
-        if i == 5 and f:
-            image.parm('bump_style').set(1)  # RawSpace
-            image.parm('bump_scale').set(1)  # normalScale
-    
-# connect
-def connectNode(filename,mat,image,disp,height):
-    if filename[0]:
-        mat.setInput(1,image,0)  # baseColor
-    if filename[1]:
-        mat.setInput(3,image,1)  # metalness
-    if filename[2]:
-        mat.setInput(6,image,3)  # roughness
-    if filename[3]:
-        mat.setInput(38,image,10)  # opacity
-    if filename[4]:
-        mat.setInput(36,image,8)  # emission
-    if filename[5]:
-        mat.setInput(40,image,11)  # normal
-    if filename[6]:
-        disp.setInput(0,height,0)  # height
-# outputNode:inputParmNum,inputNode,outputParmNum
-
-
 def closeOldWindow(title):
     for widget in QtWidgets.QApplication.topLevelWidgets():
         if title == widget.windowTitle():
@@ -396,10 +317,11 @@ def closeOldWindow(title):
 def objName(title):
     return(title + "_window")
 
-def main():
+def openWindow():
     title = "Texture_Connect"
     closeOldWindow(objName(title))
     window = MainWindow(title)
     window.show()
 
-main()
+
+openWindow()
