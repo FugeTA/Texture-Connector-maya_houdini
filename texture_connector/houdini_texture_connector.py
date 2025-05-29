@@ -293,7 +293,9 @@ def normal(files,input,imgPath):
     files.parm('file').set(str(imgPath))
     files.parm('signature').set('Vector3')
     files.parm('filecolorspace').set('Raw')
-    input.setInput(40,files,0)
+    nMap = input.parent().createNode('mtlxnormalmap')
+    nMap.setInput(0,files,0)
+    input.setInput(40,nMap,0)
     files.setName('normal')
 
 def height(files,inputSG,imgPath,hScale):
@@ -331,7 +333,6 @@ def objName(title):
 def openWindow():
     title = "Texture_Connect"
     closeOldWindow(objName(title))
-    app = QtWidgets.QApplication.instance()
     qm_file = os.path.join(translation_dir, "texCon_Jp.qm")
     translator = QtCore.QTranslator()
     translator.load(qm_file)
