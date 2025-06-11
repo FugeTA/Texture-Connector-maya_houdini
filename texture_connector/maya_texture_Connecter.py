@@ -7,188 +7,72 @@ from maya.app.general import mayaMixin
 import os
 import re
 from .texture_separator import namereplace
-from .config import translation_dir  # 修正: config からインポート
+from .window import ErrorWindow, MainWindow
 
 #  エラー用ダイアログ
-class ErrorWindow(mayaMixin.MayaQWidgetBaseMixin,QtWidgets.QWidget):
-    def __init__(self,eText,strings1,strings2):
-        super().__init__()
-        self.msgBox = QtWidgets.QMessageBox()  # メッセージボックス作成
-        self.msgBox.setWindowTitle(self.tr("Error"))  # ウィンドウの名前
-        self.msgBox.setObjectName("Error_window")  # ウィジェットとしての名前
-        self.msgBox.setIcon(QtWidgets.QMessageBox.Warning)  # アイコン
-        # 各メッセージ
-        messages = [self.tr('Not selected'),strings1+self.tr(' file not found.\nPlease check file path.\n"')+strings2+'"',self.tr('The image file and material name do not match.\n"'+strings1+'" is not applicable.')]
-        self.msgBox.setText(messages[eText])  # メッセージ呼び出し
-        self.ok = self.msgBox.addButton(QtWidgets.QMessageBox.Ok)  # ボタン作成
-        self.clip = None # クリップボタンがない時用
-    # クリップボードにコピー
-    def toClipBoard(self,path):
-        self.path = path
-        self.clip = self.msgBox.addButton(self.tr('Copy to clipboard'),QtWidgets.QMessageBox.ActionRole)
-    # 実行
-    def openWindow(self):
-        self.msgBox.exec()
-        # クリップボードにコピーを選択したなら
-        if self.msgBox.clickedButton() == self.clip:
-            cb = QtWidgets.QApplication.clipboard()
-            cb.setText(self.path)
-        self.deleteLater() # オブジェクト削除
+class MayaErrorWindow(mayaMixin.MayaQWidgetBaseMixin, ErrorWindow):
+    def __init__(self, eText, strings1, strings2, parent=None):
+        super().__init__(parent=parent, eText=eText, strings1=strings1, strings2=strings2)
 
 #  ウィンドウの見た目と各機能
-class MainWindow(mayaMixin.MayaQWidgetBaseMixin,QtWidgets.QWidget):
-    def __init__(self,title,translator):
-        super().__init__()
-        self.setWindowTitle(title)  # タイトル
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # deleteLater()の自動実行
-        self.setObjectName(objName(title))  # ウィジェットとしての名前
-        self.translator = translator  # 言語変更機能のため継承
-        load = loadvar()  # 前回の変数呼び出し
-        self.relativePath = load[5]
-        if load[0]:  # チャンネルボックスの情報があれば
-            ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8 = load[0]
-        else:  # 無ければ
-            ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8 = [0,0,0,0,0,0,0,0]
-        texpath = load[1]  # テクスチャパス読み込み
-        
-        Mainlayout = QtWidgets.QVBoxLayout()  # メインのレイアウト
-        # 言語選択
-        layout2 = QtWidgets.QHBoxLayout()
-        self.combobox1 = QtWidgets.QComboBox(self)
-        self.combobox1.addItems(["日本語", "English"])
-        self.combobox1.setCurrentIndex(load[2])
-        self.combobox1.currentIndexChanged.connect(self.langSwitch)
-        layout2.addWidget(self.combobox1)
-        # リセットボタン
-        self.button1 = QtWidgets.QPushButton(self.tr("reset"))
-        self.button1.clicked.connect(self.pushed_button1)
-        layout2.addWidget(self.button1)
-        Mainlayout.addLayout(layout2)
-        # マテリアル選択
-        layout8 = QtWidgets.QHBoxLayout()
-        self.combobox2 = QtWidgets.QComboBox(self)
-        self.combobox2.addItems(["StandardSurface & aiStandardSurface", "RedShiftMaterial", "RedShiftStandardMaterial"])
-        self.combobox2.setCurrentIndex(load[3])
-        layout8.addWidget(self.combobox2)
-        self.checkbox8 = QtWidgets.QCheckBox("UDIM")
-        self.checkbox8.setChecked(ch8)
-        layout8.addWidget(self.checkbox8)
-        Mainlayout.addLayout(layout8)
-        # テクスチャ選択
-        layout3 = QtWidgets.QHBoxLayout()
-        self.checkbox1 = QtWidgets.QCheckBox("BaseColor")
-        self.checkbox1.setChecked(ch1)
-        self.checkbox1.stateChanged.connect(self.disableButton)
-        layout3.addWidget(self.checkbox1)
-        self.checkbox2 = QtWidgets.QCheckBox("Metalness")
-        self.checkbox2.setChecked(ch2)
-        self.checkbox2.stateChanged.connect(self.disableButton)
-        layout3.addWidget(self.checkbox2)
-        self.checkbox3 = QtWidgets.QCheckBox("Roughness")
-        self.checkbox3.setChecked(ch3)
-        self.checkbox3.stateChanged.connect(self.disableButton)
-        layout3.addWidget(self.checkbox3)
-        Mainlayout.addLayout(layout3)
-        # 改行
-        layout4 = QtWidgets.QHBoxLayout()
-        self.checkbox4 = QtWidgets.QCheckBox("Normal")
-        self.checkbox4.setChecked(ch4)
-        self.checkbox4.stateChanged.connect(self.disableButton)
-        layout4.addWidget(self.checkbox4)
-        self.checkbox5 = QtWidgets.QCheckBox("Height")
-        self.checkbox5.setChecked(ch5)
-        self.checkbox5.stateChanged.connect(self.scaleVisible)
-        self.checkbox5.stateChanged.connect(self.disableButton)
-        layout4.addWidget(self.checkbox5)
-        self.checkbox6 = QtWidgets.QCheckBox("Emissive")
-        self.checkbox6.setChecked(ch6)
-        self.checkbox6.stateChanged.connect(self.disableButton)
-        layout4.addWidget(self.checkbox6)
-        self.checkbox7 = QtWidgets.QCheckBox("Opacity")
-        self.checkbox7.setChecked(ch7)
-        self.checkbox7.stateChanged.connect(self.disableButton)
-        layout4.addWidget(self.checkbox7)
-        Mainlayout.addLayout(layout4)
-        # Heightスケール
-        layout5 = QtWidgets.QHBoxLayout()
-        self.textbox = QtWidgets.QLabel("Scale")
-        self.textbox.setVisible(False)
-        layout5.addWidget(self.textbox)
-        self.doubleSpinBox = QtWidgets.QDoubleSpinBox()
-        self.doubleSpinBox.setRange(0, 1)
-        self.doubleSpinBox.setValue(load[4])
-        self.doubleSpinBox.valueChanged.connect(self.setSliderV)
-        self.doubleSpinBox.setSingleStep(0.1) 
-        self.doubleSpinBox.setVisible(False)
-        layout5.addWidget(self.doubleSpinBox)
-        self.slider = QtWidgets.QSlider()
-        self.slider.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.slider.setRange(0, 100)
-        self.slider.setValue(50)
-        self.slider.valueChanged.connect(self.setDSBV)
-        self.slider.setVisible(False)
-        layout5.addWidget(self.slider)
-        Mainlayout.addLayout(layout5)
-        # テクスチャパス
-        layout6 = QtWidgets.QHBoxLayout()
-        self.textbox2 = QtWidgets.QLineEdit("Texture Path")
-        self.textbox2.setText(texpath)
-        self.textbox2.editingFinished.connect(lambda: self.doRelativePath(self.textbox2.text()))
-        layout6.addWidget(self.textbox2)
-        self.button2 = QtWidgets.QPushButton("...")
-        self.button2.clicked.connect(self.pushed_button2)
-        layout6.addWidget(self.button2)
-        Mainlayout.addLayout(layout6)
-        # セパレーター
-        self.spacerItem1 = QtWidgets.QSpacerItem(0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        Mainlayout.addItem(self.spacerItem1)
-        self.frame = QtWidgets.QFrame()
-        self.frame.setFrameShape(QtWidgets.QFrame.HLine)
-        self.frame.setFrameShadow(QtWidgets.QFrame.Sunken)
-        Mainlayout.addWidget(self.frame)
-        # 実行ボタン
-        layout7 = QtWidgets.QHBoxLayout()
-        self.button3 = QtWidgets.QPushButton(self.tr("Connect"))
-        self.button3.clicked.connect(self.pushed_button3)
-        layout7.addWidget(self.button3)
-        self.button4 = QtWidgets.QPushButton(self.tr("Close"))
-        self.button4.clicked.connect(self.pushed_button4)
-        layout7.addWidget(self.button4)
-        Mainlayout.addLayout(layout7)
+class MayaMainWindow(mayaMixin.MayaQWidgetBaseMixin, MainWindow):
+    def __init__(self, title, translator, parent=None):
+        super().__init__(title=title, translator=translator, parent=parent)
+        self.setWindowTitle(title)
+        self.setObjectName(title + "_window")  # ウィジェットの名前
+        self.textbox2.setText(self.doRelativePath(self.textbox2.text()))
+        self.langSwitch()
+        self.setWindowTitle(title)
 
-        self.setLayout(Mainlayout)
-        
-        self.disableButton()
-        if ch5 == 1:
-            self.scaleVisible(True)
-
-    # 言語変更
-    def langSwitch(self):
-        if self.combobox1.currentIndex() == 0:
-            qm_file = r"texCon_Jp.qm"
-        else:
-            qm_file = r"texCon_En.qm"
-        self.translator.load(qm_file,directory=translation_dir)
-        QtCore.QCoreApplication.installTranslator(self.translator)
-        self.button1.setText(self.tr("reset"))
-        self.button3.setText(self.tr("Connect"))
-        self.button4.setText(self.tr("Close"))
-
+    def loadSettings(self):
+        load = loadvar()
+        return load
+    
     # リセット
     def pushed_button1(self):
-        resetvariable(self)
+        self.resetOption()
+        self.checkbox1.setChecked(False)
+        self.checkbox2.setChecked(False)
+        self.checkbox3.setChecked(False)
+        self.checkbox4.setChecked(False)
+        self.checkbox5.setChecked(False)
+        self.checkbox6.setChecked(False)
+        self.checkbox7.setChecked(False)
+        self.checkbox8.setChecked(False)
+        self.textbox2.setText('sourceimages\\')
+        self.combobox2.setCurrentIndex(0)
+        self.doubleSpinBox.setValue(0.5)
+    
+    def resetOption(self):
+        cmds.optionVar(ia=['checklist'])
+        for i in range(8):
+            cmds.optionVar(iva=['checklist',0])
+        cmds.optionVar(sv=['texRelative',False])
+        cmds.optionVar(sv=['texPath','sourceimages\\'])
+        cmds.optionVar(iv=['texlanguage',1])
+        cmds.optionVar(iv=['texmaterials',1])
+        cmds.optionVar(fv=['texhScale',0.5])
 
-    # ファイル選択
     def pushed_button2(self):
-        self.relativePath = False
-        chpath = QtWidgets.QFileDialog.getExistingDirectory()
+        if (topFolder := self.textbox2.text()) != "sourceimages\\":
+            topFolder = re.sub(r'[^/]+$', '', topFolder)
+        currentPath = cmds.workspace(q=True, rootDirectory=True) + topFolder
+        chpath = cmds.fileDialog2(
+            dialogStyle = 2,  # Mayaのファイルダイアログスタイル
+            fileMode = 3,  # ディレクトリ選択モード
+            caption = self.tr("Select Texture Folder"),
+            okCaption = self.tr("Select"),
+            startingDirectory = currentPath,
+        )
         if not chpath:
             return()
-        path2 = self.doRelativePath(chpath)
+        path2 = self.doRelativePath(chpath[0])
         self.textbox2.setText(path2)
-    
+
     def doRelativePath(self,chpath):
         work = cmds.workspace(q=True,rootDirectory=True)
+        if work == chpath:
+            return(chpath)
         path2 = re.sub(work,'',chpath)
         if not chpath == path2:
             self.relativePath = True
@@ -201,39 +85,8 @@ class MainWindow(mayaMixin.MayaQWidgetBaseMixin,QtWidgets.QWidget):
         cmds.undoInfo(openChunk=True)
         udim = '<UDIM>' if self.checkbox8.isChecked() else ''
         baseFolder = ''
-        namereplace(self,udim,baseFolder,getWorkspace,nodecreate,checkSelect,getmaterialname,Sorttex,ErrorWindow)
+        namereplace(self,udim,baseFolder,getWorkspace,nodecreate,checkSelect,getmaterialname,Sorttex,MayaErrorWindow)
         cmds.undoInfo(closeChunk=True)
-
-    # 閉じる
-    def pushed_button4(self):
-        self.close()
-
-    # ボックスからスライダーに
-    def setSliderV(self):
-        value = self.doubleSpinBox.value()*100
-        self.slider.setValue(value)
-    # スライダーからボックスに
-    def setDSBV(self):
-        value = self.slider.value()*0.01
-        self.doubleSpinBox.setValue(value)
-
-    # スケールの表示非表示
-    def scaleVisible(self,bool):
-        if bool:
-            self.textbox.setVisible(True)
-            self.doubleSpinBox.setVisible(True)
-            self.slider.setVisible(True)
-        else:
-            self.textbox.setVisible(False)
-            self.doubleSpinBox.setVisible(False)
-            self.slider.setVisible(False)
-
-    # 実行ボタンの表示変更
-    def disableButton(self):
-        if not self.checkbox1.isChecked() and not self.checkbox2.isChecked() and not self.checkbox3.isChecked() and not self.checkbox4.isChecked() and not self.checkbox5.isChecked() and not self.checkbox6.isChecked() and not self.checkbox7.isChecked():
-            self.button3.setEnabled(False)
-        else:
-            self.button3.setEnabled(True)
 
     # 終了時の処理
     def closeEvent(self,_):
@@ -366,7 +219,7 @@ def savevar(self):
     ]])
     for i in range(len(chlist)):
         cmds.optionVar(iva=['checklist',chlist[i]])  # データをuserPrefs.melに保存
-    if self.textbox2.text() != 'sourceimages/texture/':  # テクスチャフォルダパスの保存
+    if self.textbox2.text() != 'sourceimages\\':  # テクスチャフォルダパスの保存
         cmds.optionVar(sv=['texPath',self.textbox2.text()])  # データをuserPrefs.melに保存
     lan = int(self.combobox1.currentIndex())  # 言語設定
     cmds.optionVar(iv=['texlanguage',lan])  # データをuserPrefs.melに保存
@@ -386,7 +239,7 @@ def loadvar():
     if cmds.optionVar(ex='texPath'):
         texpath = cmds.optionVar(q='texPath')
     else:
-        texpath = 'sourceimages\\texture\\'
+        texpath = 'sourceimages\\'
     if cmds.optionVar(ex='texlanguage'):
         lan = cmds.optionVar(q='texlanguage')
     else:
@@ -405,46 +258,22 @@ def loadvar():
         relative = False
     return [chlist,texpath,lan,mat,hScale,relative]
 
-# 入力リセット
-def resetvariable(self):
-    cmds.optionVar(ia=['checklist'])
-    cmds.optionVar(sv=['texPath','sourceimages\\texture\\'])
-    cmds.optionVar(iv=['texlanguage',1])
-    cmds.optionVar(iv=['texmaterials',1])
-    cmds.optionVar(fv=['texhScale',0.5])
-    self.checkbox1.setChecked(False)
-    self.checkbox2.setChecked(False)
-    self.checkbox3.setChecked(False)
-    self.checkbox4.setChecked(False)
-    self.checkbox5.setChecked(False)
-    self.checkbox6.setChecked(False)
-    self.checkbox7.setChecked(False)
-    self.checkbox8.setChecked(False)
-    self.textbox2.setText('sourceimages\\texture\\')
-    self.combobox2.setCurrentIndex(0)
-    self.doubleSpinBox.setValue(0.5)
+
 
 #  ウィンドウがすでに起動していれば閉じる
 def closeOldWindow(title):
+    title = title + "_window"
     if cmds.window(title, q=True, ex=True):  # ウィジェットの名前で削除
         cmds.deleteUI(title)
-
-def objName(title):
-    return(title + "_window")
-
+        
 #  アプリの実行と終了
 def openWindow():
     title = "Texture_Connect"
-    closeOldWindow(objName(title))
+    closeOldWindow(title)
     app = QtWidgets.QApplication.instance()
-    if cmds.optionVar(q='texlanguage') == 0:
-        qm_file = os.path.join(translation_dir, "texCon_Jp.qm")
-    else:
-        qm_file = os.path.join(translation_dir, "texCon_En.qm")
     translator = QtCore.QTranslator(app)
-    translator.load(qm_file)
     QtCore.QCoreApplication.installTranslator(translator)
-    window = MainWindow(title,translator)
+    window = MayaMainWindow(title,translator)
     window.show()
     try:
         app.exec()  #Pyside6
