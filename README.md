@@ -30,8 +30,6 @@ gitをインストール済みの場合、以下のコマンドを実行して�
 ```bash
 /Applications/Side Effects Software/Houdini(バージョン)/python(バージョン)/python.exe -m pip install (ダウンロードしたファイル) --user
 ```
-userオプションでインストールすることで、ユーザーディレクトリにパッケージがインストールされます。  
-その結果、インストールしたパッケージを、MayaとHoudiniの両方で使用することができます。
 
 ### ツールの実行
 MayaまたはHoudiniのスクリプトエディタで、以下のコマンドを実行します。  
