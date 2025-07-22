@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='texture_connector',  # パッケージ名（pip listで表示される）
-    version="0.0.1",  # バージョン
+    version="1.0.0",  # バージョン
     description="TextureConnector for Maya and Houdini",  # 説明
     author='Fujita Tatsuki',  # 作者名
     packages=find_packages(include=["texture_connector", "texture_connector.*"]),
