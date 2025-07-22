@@ -7,7 +7,7 @@ setup(
     author='Fujita Tatsuki',  # 作者名
     packages=find_packages(include=["texture_connector", "texture_connector.*"]),
     package_data={
-        "texture_connector": ["language/*.qm"],  # langage フォルダ内の .qm ファイルを含める
+        "texture_connector": ["language/*.qm"],  # language フォルダ内の .qm ファイルを含める
     },
     license='MIT',  # ライセンス
     classifiers=[  # 追加のメタデータ
